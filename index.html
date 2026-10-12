@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#5426a8">
+  <title>Money Demo India</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f2fb;
+      color: #24163d;
+    }
+    header {
+      background: #5426a8;
+      color: white;
+      padding: 22px 18px;
+      border-radius: 0 0 24px 24px;
+    }
+    header h1 { margin: 0 0 8px; font-size: 24px; }
+    header p { margin: 0; opacity: .9; }
+    main { padding: 18px; max-width: 520px; margin: auto; }
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 3px 14px #25134b12;
+    }
+    .label { color: #6f6680; font-size: 14px; }
+    .amount { font-size: 30px; font-weight: bold; margin: 10px 0; }
+    button, select, input {
+      width: 100%;
+      padding: 13px;
+      border-radius: 11px;
+      border: 1px solid #d9d0eb;
+      font-size: 16px;
+      margin-top: 10px;
+      background: white;
+    }
+    button {
+      background: #5426a8;
+      color: white;
+      border: 0;
+      font-weight: bold;
+    }
+    .secondary { background: #eee7fa; color: #5426a8; }
+    .notice {
+      background: #fff4d8;
+      color: #6b4b00;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    #result { overflow-wrap: anywhere; line-height: 1.6; }
+    footer { text-align: center; color: #756c84; font-size: 12px; padding: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Money Demo India</h1>
+    <p>UPI QR Information Reader</p>
+  </header>
+
+  <main>
+    <div class="notice">
+      SIMULATION ONLY — No money is transferred.
+    </div>
+
+    <section class="card">
+      <div class="label">Demo balance</div>
+      <div class="amount" id="balance">₹10,000.00</div>
+      <p class="label">Illustrative balance — not a bank balance.</p>
+      <button class="secondary" onclick="changeBalance()">Change demo balance</button>
+    </section>
+
+    <section class="card">
+      <h3>Demo bank profiles</h3>
+      <select id="bank">
+        <option>Axis Bank — Demo profile</option>
+        <option>Canara Bank — Demo profile</option>
+        <option>Fino Payments Bank — Demo profile</option>
+      </select>
+      <p class="label">These selections do not connect to bank accounts.</p>
+    </section>
+
+    <section class="card">
+      <h3>Read UPI QR information</h3>
+      <p class="label">Choose a QR image to read the information encoded in it.</p>
+      <input id="qrfile" type="file" accept="image/*">
+      <button onclick="readQR()">Read QR image</button>
+      <div id="result" aria-live="polite"></div>
+    </section>
+
+    <section class="card">
+      <h3>Payment simulation</h3>
+      <label for="payee">Payee label</label>
+      <input id="payee" placeholder="Test recipient">
+      <label for="amount">Amount (INR)</label>
+      <input id="amount" type="number" min="1" step="0.01" placeholder="100">
+      <button onclick="simulate()">Simulate payment</button>
+      <div id="paymentResult" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer>Money Demo India · Offline demo interface</footer>
+
+  <script>
+    function changeBalance() {
+      const value = prompt("Enter an illustrative demo balance (INR):", "10000");
+      if (value !== null && value.trim() !== "" &&
+          Number.isFinite(Number(value)) && Number(value) >= 0) {
+        const formatted = Number(value).toLocaleString("en-IN", {
+          style: "currency", currency: "INR"
+        });
+        document.getElementById("balance").textContent = formatted;
+      }
+    }
+
+    async function readQR() {
+      const file = document.getElementById("qrfile").files[0];
+      const result = document.getElementById("result");
+      if (!file) {
+        result.textContent = "Please choose a QR image first.";
+        return;
+      }
+      if (!("BarcodeDetector" in window)) {
+        result.textContent =
+          "QR image selected. This browser does not support built-in QR decoding. Try a browser with BarcodeDetector support.";
+        return;
+      }
+      try {
+        const bitmap = await createImageBitmap(file);
+        const detector = new BarcodeDetector({ formats: ["qr_code"] });
+        const codes = await detector.detect(bitmap);
+        if (!codes.length) {
+          result.textContent = "No readable QR code found in this image.";
+          return;
+        }
+        const raw = codes[0].rawValue;
+        result.replaceChildren();
+        const heading = document.createElement("p");
+        heading.textContent = "Decoded QR content:";
+        const pre = document.createElement("pre");
+        pre.style.whiteSpace = "pre-wrap";
+        pre.textContent = raw;
+        result.append(heading, pre);
+        const note = document.createElement("p");
+        note.textContent =
+          "This is encoded QR data only. It does not verify the payee's identity or bank account.";
+        result.append(note);
+      } catch (error) {
+        result.textContent = "Could not read this image in the current browser.";
+      }
+    }
+
+    function simulate() {
+      const payee = document.getElementById("payee").value.trim();
+      const amount = Number(document.getElementById("amount").value);
+      const output = document.getElementById("paymentResult");
+      output.replaceChildren();
+
+      const title = document.createElement("h3");
+      title.textContent = "Simulation complete";
+      const details = document.createElement("p");
+      details.textContent = "Test recipient: " + (payee || "Test recipient") +
+        " · Amount: " + (amount > 0
+          ? amount.toLocaleString("en-IN", {style:"currency",currency:"INR"})
+          : "Not specified");
+      const warning = document.createElement("p");
+      warning.textContent = "DEMO ONLY — No payment was made.";
+      output.append(title, details, warning);
+    }
+  </script>
+</body>
+  </html>
